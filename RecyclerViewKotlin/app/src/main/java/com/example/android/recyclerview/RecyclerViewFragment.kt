@@ -17,14 +17,17 @@
 package com.example.android.recyclerview
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioButton
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.example.android.common.logger.Log.i
+import kotlin.concurrent.thread
 
 /**
  * Demonstrates the use of [RecyclerView] with a [LinearLayoutManager] and a
@@ -36,6 +39,7 @@ class RecyclerViewFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var layoutManager: RecyclerView.LayoutManager
     private lateinit var dataset: Array<String>
+    private lateinit var mSwipeRefreshLayout: SwipeRefreshLayout
 
     enum class LayoutManagerType { GRID_LAYOUT_MANAGER, LINEAR_LAYOUT_MANAGER }
 
@@ -51,7 +55,12 @@ class RecyclerViewFragment : Fragment() {
                               container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         val rootView = inflater.inflate(R.layout.recycler_view_frag,
-                container, false).apply { tag = TAG}
+                container, false).apply { tag = TAG }
+
+        mSwipeRefreshLayout = rootView.findViewById(R.id.swiperefresh)
+        mSwipeRefreshLayout.setColorScheme(
+                R.color.swipe_color_1, R.color.swipe_color_2,
+                R.color.swipe_color_3, R.color.swipe_color_4)
 
         recyclerView = rootView.findViewById(R.id.recyclerView)
 
@@ -72,15 +81,27 @@ class RecyclerViewFragment : Fragment() {
         // Set CustomAdapter as the adapter for RecyclerView.
         recyclerView.adapter = CustomAdapter(dataset)
 
-        rootView.findViewById<RadioButton>(R.id.linear_layout_rb).setOnClickListener{
+        rootView.findViewById<RadioButton>(R.id.linear_layout_rb).setOnClickListener {
             setRecyclerViewLayoutManager(LayoutManagerType.LINEAR_LAYOUT_MANAGER)
         }
 
-        rootView.findViewById<RadioButton>(R.id.grid_layout_rb).setOnClickListener{
+        rootView.findViewById<RadioButton>(R.id.grid_layout_rb).setOnClickListener {
             setRecyclerViewLayoutManager(LayoutManagerType.GRID_LAYOUT_MANAGER)
         }
 
         return rootView
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        mSwipeRefreshLayout.setOnRefreshListener {
+            thread {
+                Thread.sleep(3 * 1000)
+                activity?.runOnUiThread{
+                    mSwipeRefreshLayout.isRefreshing = false
+                }
+            }
+        }
     }
 
     /**
@@ -99,7 +120,9 @@ class RecyclerViewFragment : Fragment() {
 
         when (layoutManagerType) {
             RecyclerViewFragment.LayoutManagerType.GRID_LAYOUT_MANAGER -> {
-                layoutManager = GridLayoutManager(activity, SPAN_COUNT)
+                layoutManager = GridLayoutManager(activity, SPAN_COUNT).apply {
+                    orientation = GridLayoutManager.HORIZONTAL
+                }
                 currentLayoutManagerType = LayoutManagerType.GRID_LAYOUT_MANAGER
             }
             RecyclerViewFragment.LayoutManagerType.LINEAR_LAYOUT_MANAGER -> {
@@ -127,7 +150,7 @@ class RecyclerViewFragment : Fragment() {
      * from a local content provider or remote server.
      */
     private fun initDataset() {
-        dataset = Array(DATASET_COUNT, {i -> "This is element # $i"})
+        dataset = Array(DATASET_COUNT, { i -> "This is element # $i" })
     }
 
     companion object {
